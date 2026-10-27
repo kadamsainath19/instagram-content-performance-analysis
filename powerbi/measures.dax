@@ -1,0 +1,63 @@
+// Instagram Content Performance Analysis - Power BI DAX
+// Tables: posts (data/posts.csv) and accounts (data/accounts.csv)
+// Relationship: accounts[account_id] (one) -> posts[account_id] (many)
+
+// ---------- Measures (create on the posts table) ----------
+Total Posts = COUNTROWS ( posts )
+
+Total Reach = SUM ( posts[reach] )
+
+Avg Reach per Post = DIVIDE ( [Total Reach], [Total Posts] )
+
+// Average of the per-post engagement rate (matches the Python, SQL and Excel results)
+Avg Engagement Rate = AVERAGE ( posts[engagement_rate] )
+
+// Weighted version: total interactions divided by total reach
+Weighted Engagement Rate =
+DIVIDE (
+    SUM ( posts[likes] ) + SUM ( posts[comments] ) + SUM ( posts[shares] ) + SUM ( posts[saves] ),
+    SUM ( posts[reach] )
+)
+
+Total Follows Gained = SUM ( posts[follows_gained] )
+
+// Reach compared with the average of all posts (ignores filters on post type)
+Reach vs Overall Avg % =
+DIVIDE ( [Avg Reach per Post], CALCULATE ( [Avg Reach per Post], ALL ( posts[post_type] ) ) ) - 1
+
+// ---------- Calculated columns (create on the posts table) ----------
+Time Slot =
+SWITCH (
+    TRUE (),
+    posts[hour] <= 5,  "Late night (0-5)",
+    posts[hour] <= 11, "Morning (6-11)",
+    posts[hour] <= 17, "Afternoon (12-17)",
+    "Evening (18-23)"
+)
+
+Time Slot Order =
+SWITCH ( TRUE (), posts[hour] <= 5, 1, posts[hour] <= 11, 2, posts[hour] <= 17, 3, 4 )
+
+Hashtag Group =
+SWITCH (
+    TRUE (),
+    posts[hashtag_count] <= 5,  "0-5",
+    posts[hashtag_count] <= 10, "6-10",
+    posts[hashtag_count] <= 15, "11-15",
+    "16+"
+)
+
+Hashtag Group Order =
+SWITCH ( TRUE (), posts[hashtag_count] <= 5, 1, posts[hashtag_count] <= 10, 2, posts[hashtag_count] <= 15, 3, 4 )
+
+Weekday Order =
+SWITCH (
+    posts[weekday],
+    "Monday", 1, "Tuesday", 2, "Wednesday", 3, "Thursday", 4,
+    "Friday", 5, "Saturday", 6, "Sunday", 7
+)
+
+CTA Label = IF ( posts[has_cta] = 1, "With CTA", "No CTA" )
+
+// In the Data view: select each *Order column's partner text column ->
+// Column tools -> Sort by column -> pick the matching Order column.
